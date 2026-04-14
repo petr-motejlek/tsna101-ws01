@@ -1,0 +1,139 @@
+# =============================================================================
+# 🚀 EXERCISE 2 — ECS Fargate Infrastructure
+#
+# In this exercise you will create the ECS infrastructure:
+#   • ECS Cluster — manages the tasks
+#   • Task Execution Role — pulls images, writes logs
+#   • Task Definition — describes the container
+#
+# ⚠️ NOTE: The ECS Service (which wires to ALB) is in Exercise 4.
+#
+# Architecture:
+#    VPC 2 private subnets
+#       └── ECS Cluster ── Task Definition (ealen/echo-server)
+#                     └── CloudWatch Logs
+#
+# Network mode: awsvpc (required for Fargate)
+#    Each task gets its own ENI in the private subnet.
+#    Security groups apply at the task level.
+#
+# Steps:
+#   1. Uncomment the ECS Cluster
+#   2. Uncomment the Task Execution Role
+#   3. Uncomment the CloudWatch Log Group (already complete — optional review)
+#   4. Uncomment the Task Definition
+#
+# 💡 Key concepts:
+#    • Task Definition = recipe for the container
+#    • Container runs in VPC private subnet via awsvpc mode
+#    • awslogs driver streams stdout/stderr to CloudWatch
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Step 1 — ECS Cluster
+# ---------------------------------------------------------------------------
+
+resource "aws_ecs_cluster" "main" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-cluster"
+  # tags = {
+  #   Name = "${var.project}-cluster"
+  # }
+
+  # Setting: Disable Container Insights (optional)
+  # Why: Prevents orphaned CloudWatch Log Group that survives terraform destroy
+  # setting {
+  #   name  = "containerInsights"
+  #   value = "disabled"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 2 — Task Execution Role (IAM)
+#
+# 💡 What this role does:
+#    • Pulls container image from ECR/Docker Hub
+#    • Writes to CloudWatch Logs
+#    The container itself doesn't need IAM (echo-server makes no AWS API calls)
+# ---------------------------------------------------------------------------
+
+resource "aws_iam_role" "ecs_task_execution" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-ecs-task-execution-role"
+  # tags = {
+  #   Name = "${var.project}-ecs-task-execution-role"
+  # }
+  # assume_role_policy = jsonencode({
+  #   Version = "2012-10-17"
+  #   Statement = [{
+  #     Effect    = "Allow"
+  #     Principal = { Service = "ecs-tasks.amazonaws.com" }
+  #     Action    = "sts:AssumeRole"
+  #   }]
+  # })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
+  # Already complete — attaches AWS managed policy
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# ---------------------------------------------------------------------------
+# Step 3 — CloudWatch Log Group (optional review)
+# ---------------------------------------------------------------------------
+
+resource "aws_cloudwatch_log_group" "ecs_echo" {
+  # Already complete — no action needed
+  name              = "/ecs/${var.project}/echo-server"
+  retention_in_days = 7
+
+  tags = {
+    Name = "${var.project}-echo-server-logs"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Step 4 — Task Definition
+#
+# 💡 Key settings:
+#    • family = name prefix for revision tracking
+#    • requires_compatibilities = ["FARGATE"] = required for Fargate
+#    • network_mode = "awsvpc" = tasks get ENI in VPC subnet
+#    • cpu/memory = Fargate sizing (256/512 = smallest valid combo)
+#    • containerDefinitions = JSON array (use jsonencode!)
+# =============================================================================
+
+resource "aws_ecs_task_definition" "echo" {
+  # 🚩 ACTION: Uncomment all lines below
+  # family = "${var.project}-echo-server"
+  # requires_compatibilities = ["FARGATE"]       # Required for Fargate
+  # network_mode = "awsvpc"                    # Required for Fargate
+  # cpu = 256                                 # 256 vCPU = smallest
+  # memory = 512                              # 512 MB = smallest
+  # execution_role_arn = aws_iam_role.ecs_task_execution.arn
+  # tags = {
+  #   Name = "${var.project}-echo-server-task"
+  # }
+  # container_definitions = jsonencode([{
+  #   name      = "echo-server"
+  #   image     = var.ecs_image              # "ealen/echo-server:latest"
+  #   essential = true                      # Container must stay running
+  #   portMappings = [{
+  #     containerPort = 80
+  #     protocol    = "tcp"
+  #   }]
+  #   logConfiguration = {
+  #     logDriver = "awslogs"                 # CloudWatch Logs driver
+  #     options = {
+  #       "awslogs-group"         = aws_cloudwatch_log_group.ecs_echo.name
+  #       "awslogs-region"        = var.aws_region
+  #       "awslogs-stream-prefix" = "echo-server"
+  #     }
+  #   }
+  # }])
+}
+
+# ✅ Verification:
+#    terraform validate
+#    terraform plan   # shows: 1 cluster, 1 role + policy attachment, 1 log group, 1 task definition

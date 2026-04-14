@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------------------
+# Exercise 4 outputs — uncomment after completing 31-security-alb.tf,
+# 40-alb.tf, and 51-ecs-service.tf
+# ---------------------------------------------------------------------------
+
+# output "alb_dns_name" {
+#   description = "DNS name of the Application Load Balancer. Use this to curl the echo-server."
+#   value       = aws_lb.alb.dns_name
+# }
+
+# output "alb_arn" {
+#   description = "ARN of the Application Load Balancer."
+#   value       = aws_lb.alb.arn
+# }
+
+# output "ecs_service_name" {
+#   description = "Name of the ECS service running the echo-server."
+#   value       = aws_ecs_service.echo.name
+# }

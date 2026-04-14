@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# Exercise 1 outputs — uncomment after completing 10-vpc1.tf and 11-vpc2.tf
+# ---------------------------------------------------------------------------
+
+# output "vpc1_id" {
+#   description = "ID of VPC 1 (frontend / ALB network, 10.0.0.0/16)."
+#   value       = aws_vpc.vpc1.id
+# }
+
+# output "vpc1_public_subnet_ids" {
+#   description = "IDs of the two public subnets in VPC 1 (one per AZ)."
+#   value       = [for s in aws_subnet.vpc1_public : s.id]
+# }
+
+# output "vpc1_private_subnet_ids" {
+#   description = "IDs of the two private subnets in VPC 1 (one per AZ)."
+#   value       = [for s in aws_subnet.vpc1_private : s.id]
+# }
+
+# output "vpc2_id" {
+#   description = "ID of VPC 2 (backend / ECS network, 10.1.0.0/16)."
+#   value       = aws_vpc.vpc2.id
+# }
+
+# output "vpc2_private_subnet_ids" {
+#   description = "IDs of the two private subnets in VPC 2 (ECS tasks run here)."
+#   value       = [for s in aws_subnet.vpc2_private : s.id]
+# }

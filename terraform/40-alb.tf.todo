@@ -1,0 +1,96 @@
+# =============================================================================
+# 🚀 EXERCISE 4 — Application Load Balancer
+#
+# In this exercise you will expose the ECS service to the internet.
+#
+# Architecture:
+#    Internet ──[ALB:80]── VPC 1 public subnets
+#                         └──[VPC Peering]── VPC 2 private subnets (ECS)
+#
+# Why target_type = "ip":
+#    ALB and ECS live in different VPCs. ALB cannot register EC2 instance IDs
+#    across VPCs — it must register the task's ENI IP address.
+#    The ECS Service handles registration automatically.
+#
+# Steps:
+#   1. Uncomment the Target Group (where ALB forwards traffic)
+#   2. Uncomment the ALB itself
+#   3. Uncomment the HTTP Listener
+#
+# 💡 Key concepts:
+#    • internal = false = publicly reachable
+#    • subnets = VPC 1 public subnets (2 AZs)
+#    • target_type = "ip" = register task IPs, not instance IDs
+#    • health_check = HTTP/200 on / = task is healthy
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Step 1 — Target Group
+# ---------------------------------------------------------------------------
+
+resource "aws_lb_target_group" "echo" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-echo-tg"
+  # port = 80
+  # protocol = "HTTP"
+  # target_type = "ip"                    # ← CRITICAL: Register task IPs, not instance IDs!
+  # vpc_id = aws_vpc.vpc1.id
+  # deregistration_delay = 30             # Graceful draining
+  # tags = {
+  #   Name = "${var.project}-echo-tg"
+  # }
+
+  # Health check: How does ALB know the task is healthy?
+  # health_check {
+  #   enabled = true
+  #   path = "/"                         # echo-server returns 200 on /
+  #   port = "traffic-port"              # Use container port (80)
+  #   protocol = "HTTP"
+  #   matcher = "200"                    # Expected response code
+  #   healthy_threshold = 2               # 2 consecutive = healthy
+  #   unhealthy_threshold = 3            # 3 consecutive = unhealthy
+  #   interval = 30                      # Check every 30 seconds
+  #   timeout = 5                        # 5 second timeout
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 2 — ALB
+# ---------------------------------------------------------------------------
+
+resource "aws_lb" "alb" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-alb"
+  # internal = false                     # ← PUBLIC load balancer
+  # load_balancer_type = "application"
+  # subnets = [for s in aws_subnet.vpc1_public : s.id]   # VPC 1 public subnets
+  # security_groups = [aws_security_group.alb_sg.id]    # ALB Security Group
+  # enable_deletion_protection = false    # For easy cleanup
+  # tags = {
+  #   Name = "${var.project}-alb"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 3 — HTTP Listener
+# ---------------------------------------------------------------------------
+
+resource "aws_lb_listener" "http" {
+  # 🚩 ACTION: Uncomment all lines below
+  # load_balancer_arn = aws_lb.alb.arn
+  # port = 80
+  # protocol = "HTTP"
+  # tags = {
+  #   Name = "${var.project}-alb-http-listener"
+  # }
+
+  # Default action: Forward to target group
+  # default_action {
+  #   type = "forward"
+  #   target_group_arn = aws_lb_target_group.echo.arn
+  # }
+}
+
+# ✅ Verification:
+#    terraform validate
+#    terraform plan   # shows: 1 target group, 1 ALB, 1 listener

@@ -1,0 +1,67 @@
+# =============================================================================
+# 🚀 EXERCISE 2 — ECS Security Group (VPC 2)
+#
+# In this exercise you will create security groups for ECS Fargate.
+# Security Groups are critical — they define who can reach your containers.
+#
+# Why separate rule resources (not inline blocks):
+#    Adding/removing rules won't force destroy/recreate of the SG.
+#    In WS2, we'll tighten these rules — separate resources make it easy.
+#
+# Architecture:
+#    VPC 2 ──[ECS SG]── Port 80 ──[ALB via VPC Peering]
+#              └───────────── Anywhere (outbound: image pulls)
+#
+# Steps:
+#   1. Uncomment the aws_security_group resource
+#   2. Uncomment the ingress rule (HTTP from VPC 1)
+#   3. Egress is already configured (allows all outbound)
+#
+# 💡 Key concept:
+#    ALB connects via VPC Peering, so source IPs are from VPC 1 CIDR.
+#    Allowing only 10.0.0.0/16 = only ALB can reach ECS, not the internet!
+# =============================================================================
+
+resource "aws_security_group" "ecs_sg" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-ecs-sg"
+  # description = "Security group for ECS Fargate tasks in VPC 2."
+  # vpc_id = aws_vpc.vpc2.id
+  # tags = {
+  #   Name = "${var.project}-ecs-sg"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Ingress: HTTP from VPC 1 only (ALB via VPC Peering)
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_security_group_ingress_rule" "ecs_http_from_vpc1" {
+  # 🚩 ACTION: Uncomment all lines below
+  # security_group_id = aws_security_group.ecs_sg.id
+  # description = "Allow inbound HTTP from VPC 1 (ALB source IPs)."
+  # cidr_ipv4 = var.vpc1_cidr              # 10.0.0.0/16 — VPC 1 CIDR
+  # from_port = 80
+  # to_port = 80
+  # ip_protocol = "tcp"
+}
+
+# ---------------------------------------------------------------------------
+# Egress: All outbound (image pulls, CloudWatch logs)
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_security_group_egress_rule" "ecs_all_egress" {
+  # Already complete — ECS needs unrestricted egress
+  security_group_id = aws_security_group.ecs_sg.id
+  description       = "Allow all outbound traffic (ECR image pull, CloudWatch logs)."
+
+  cidr_ipv4   = "0.0.0.0/0"
+  ip_protocol = "-1"
+}
+
+# ✅ Verification:
+#    terraform validate
+#    terraform plan   # shows: 1 SG, 2 rules (1 ingress + 1 egress)
+
+# ⚠️ NOTE: At this point, you can run terraform apply to test the SG.
+#    But we'll wait until Exercise 3 (VPC Peering) to test full connectivity.

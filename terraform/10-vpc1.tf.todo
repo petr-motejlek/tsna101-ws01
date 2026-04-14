@@ -1,0 +1,197 @@
+# =============================================================================
+# 🚀 EXERCISE 1 — Create VPC 1 (Frontend Network)
+#
+# In this exercise you will build the foundation: VPC 1 that hosts:
+#   • Application Load Balancer in PUBLIC subnets
+#   • NAT Gateway for egress from private subnets
+#
+# Architecture:
+#   Internet ──[IGW]── ALB (public subnets)
+#                     └───[NAT GW]── Private subnets ── S3/DynamoDB (VPC endpoints)
+#
+# Steps (follow in order):
+#   1. Uncomment the aws_vpc resource — your first VPC!
+#   2. Uncomment the subnet blocks — 2 public + 2 private per AZs
+#   3. Uncomment the Internet Gateway
+#   4. Uncomment the NAT Gateway (regional)
+#   5. Uncomment route tables and routes
+#
+# 💡 Key concepts:
+#   • 2 AZs = high availability (ALB spreads across both)
+#   • Public/private split = security boundary
+#   • Regional NAT GW = single AZ-independent egress
+#   • VPC Endpoints = free S3/DynamoDB access via AWS backbone
+#
+# ⚠️ WARNING: Don't skip DNS settings — ALB needs them to resolve targets!
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Step 1 — VPC
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc" "vpc1" {
+  # 🚩 ACTION: Uncomment all lines below (remove leading # from each line)
+  # cidr_block           = var.vpc1_cidr              # 10.0.0.0/16 — don't change
+  # enable_dns_support   = true                    # REQUIRED for ALB DNS resolution
+  # enable_dns_hostnames = true                   # REQUIRED for ECS service discovery
+  # tags = {
+  #   Name = "${var.project}-vpc1"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 2 — Subnets (2 public + 2 private, one per AZ)
+# ---------------------------------------------------------------------------
+
+resource "aws_subnet" "vpc1_public" {
+  for_each = local.azs
+
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id
+  # cidr_block = cidrsubnet(var.vpc1_cidr, 8, index(keys(local.azs), each.key))
+  # availability_zone = each.value
+  # map_public_ip_on_launch = true          # ← Makes this a PUBLIC subnet (gets public IP)
+  # tags = {
+  #   Name = "${var.project}-vpc1-public-${each.key}"
+  #   Tier  = "public"
+  # }
+}
+
+resource "aws_subnet" "vpc1_private" {
+  for_each = local.azs
+
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id
+  # cidr_block = cidrsubnet(var.vpc1_cidr, 8, index(keys(local.azs), each.key) + 2)
+  # availability_zone = each.value
+  # tags = {
+  #   Name = "${var.project}-vpc1-private-${each.key}"
+  #   Tier  = "private"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 3 — Internet Gateway (for public subnet egress + inbound)
+# ---------------------------------------------------------------------------
+
+resource "aws_internet_gateway" "vpc1_igw" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id
+  # tags = {
+  #   Name = "${var.project}-vpc1-igw"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 4 — Regional NAT Gateway (for private subnet egress)
+#
+# 💡 Why Regional: One NAT GW that works across all AZs.
+#    In WS2, we upgrade to zonal NAT GWs for explicit AZ isolation.
+# ---------------------------------------------------------------------------
+
+resource "aws_nat_gateway" "vpc1_nat" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id
+  # connectivity_type = "public"
+  # availability_mode = "regional"
+  # depends_on = [aws_internet_gateway.vpc1_igw]  # Wait for IGW to be ready
+  # tags = {
+  #   Name = "${var.project}-vpc1-rnat"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 5 — Route Tables and Routes
+#
+# 💡 Why separate aws_route resources:
+#    Modifying routes (e.g., swapping peering for TGW in WS2)
+#    won't force destroy/recreate of the route table.
+# ---------------------------------------------------------------------------
+
+# Public route table — default route via IGW
+resource "aws_route_table" "vpc1_public" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id
+  # tags = {
+  #   Name = "${var.project}-vpc1-public-rt"
+  # }
+}
+
+resource "aws_route" "vpc1_public_default" {
+  # 🚩 ACTION: Uncomment all lines below
+  # route_table_id = aws_route_table.vpc1_public.id
+  # destination_cidr_block = "0.0.0.0/0"    # Anywhere
+  # gateway_id = aws_internet_gateway.vpc1_igw.id
+}
+
+resource "aws_route_table_association" "vpc1_public" {
+  for_each = aws_subnet.vpc1_public
+
+  # Already complete — no action needed
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.vpc1_public.id
+}
+
+# Private route table — default route via NAT GW
+resource "aws_route_table" "vpc1_private" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id
+  # tags = {
+  #   Name = "${var.project}-vpc1-private-rt"
+  # }
+}
+
+resource "aws_route" "vpc1_private_default" {
+  # 🚩 ACTION: Uncomment all lines below
+  # route_table_id = aws_route_table.vpc1_private.id
+  # destination_cidr_block = "0.0.0.0/0"    # Anywhere
+  # nat_gateway_id = aws_nat_gateway.vpc1_nat.id
+}
+
+resource "aws_route_table_association" "vpc1_private" {
+  for_each = aws_subnet.vpc1_private
+
+  # Already complete — no action needed
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.vpc1_private.id
+}
+
+# ---------------------------------------------------------------------------
+# VPC Endpoints (S3, DynamoDB) — free, keep traffic off NAT GW
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_endpoint" "vpc1_s3" {
+  # Already complete — no action needed
+  vpc_id            = aws_vpc.vpc1.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.vpc1_public.id,
+    aws_route_table.vpc1_private.id,
+  ]
+
+  tags = {
+    Name = "${var.project}-vpc1-endpoint-s3"
+  }
+}
+
+resource "aws_vpc_endpoint" "vpc1_dynamodb" {
+  # Already complete — no action needed
+  vpc_id            = aws_vpc.vpc1.id
+  service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.vpc1_public.id,
+    aws_route_table.vpc1_private.id,
+  ]
+
+  tags = {
+    Name = "${var.project}-vpc1-endpoint-dynamodb"
+  }
+}
+
+# ✅ Verification (run after uncommenting):
+#    terraform validate   # must pass
+#    terraform plan   # shows: 1 VPC, 4 subnets, 1 IGW, 1 NAT GW, 4 route tables, 2 routes, 2 endpoints

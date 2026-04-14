@@ -1,0 +1,80 @@
+# =============================================================================
+# 🚀 EXERCISE 3 — VPC Peering (VPC 1 ↔ VPC 2)
+#
+# In this exercise you will connect the two VPCs using VPC Peering.
+#
+# Why VPC Peering (not Transit Gateway):
+#   • Free — no hourly charges, no per-GB fees
+#   • Simple — single connection, auto-accepted
+#   • Deliberately limited — no transitive routing
+#   • WS2 replaces this with TGW to unlock multi-VPC routing
+#
+# Architecture:
+#    VPC 1 (ALB) ──────[Peering]────── VPC 2 (ECS)
+#      10.0.0.0/16 ↔ 10.1.0.0/16
+#
+# ⚠️ CRITICAL: Routes are required in BOTH directions!
+#    Without return path, SYN-ACK packets are dropped = connection fails.
+#
+# Steps:
+#   1. Uncomment the VPC Peering connection
+#   2. Uncomment route from VPC 1 public → VPC 2
+#   3. Uncomment route from VPC 1 private → VPC 2
+#   4. Uncomment route from VPC 2 private → VPC 1 (return path!)
+# =============================================================================
+
+resource "aws_vpc_peering_connection" "vpc1_to_vpc2" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc1.id               # VPC 1 = requester
+  # peer_vpc_id = aws_vpc.vpc2.id          # VPC 2 = accepter
+  # auto_accept = true                    # Same account = auto-accept
+  # tags = {
+  #   Name = "${var.project}-vpc1-to-vpc2-peering"
+  #   Side  = "requester"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Route: VPC 1 public → VPC 2 (ALB → ECS task IPs)
+#
+# ⚠️ CRITICAL: Without this route, ALB → ECS traffic is BLACK-HOLED!
+#    The ALB ENIs are in VPC 1 public subnets.
+#    When ALB forwards to 10.1.x.x, the VPC router needs this route.
+# ---------------------------------------------------------------------------
+
+resource "aws_route" "vpc1_public_to_vpc2" {
+  # 🚩 ACTION: Uncomment all lines below
+  # route_table_id = aws_route_table.vpc1_public.id      # VPC 1 public RT
+  # destination_cidr_block = var.vpc2_cidr          # 10.1.0.0/16
+  # vpc_peering_connection_id = aws_vpc_peering_connection.vpc1_to_vpc2.id
+}
+
+# ---------------------------------------------------------------------------
+# Route: VPC 1 private → VPC 2 (future resources in WS2/WS3)
+# ---------------------------------------------------------------------------
+
+resource "aws_route" "vpc1_private_to_vpc2" {
+  # 🚩 ACTION: Uncomment all lines below
+  # route_table_id = aws_route_table.vpc1_private.id
+  # destination_cidr_block = var.vpc2_cidr
+  # vpc_peering_connection_id = aws_vpc_peering_connection.vpc1_to_vpc2.id
+}
+
+# ---------------------------------------------------------------------------
+# Route: VPC 2 private → VPC 1 (return path — CRITICAL!)
+#
+# ⚠️ CRITICAL: SYN-ACK must return to ALB!
+#    Without return path, TCP handshake never completes.
+#    This is the #1 cause of VPC Peering failures.
+# ---------------------------------------------------------------------------
+
+resource "aws_route" "vpc2_private_to_vpc1" {
+  # 🚩 ACTION: Uncomment all lines below
+  # route_table_id = aws_route_table.vpc2_private.id
+  # destination_cidr_block = var.vpc1_cidr          # 10.0.0.0/16
+  # vpc_peering_connection_id = aws_vpc_peering_connection.vpc1_to_vpc2.id
+}
+
+# ✅ Verification:
+#    terraform validate
+#    terraform plan   # shows: 1 peering + 3 routes

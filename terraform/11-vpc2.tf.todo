@@ -1,0 +1,149 @@
+# =============================================================================
+# 🚀 EXERCISE 1 — Create VPC 2 (Backend Network)
+#
+# In this exercise you will build the backend network for ECS Fargate:
+#   • Private subnets only (no ALB needed here)
+#   • NAT Gateway for container image pulls + CloudWatch Logs
+#
+# Architecture:
+#   Internet ──[IGW]──[NAT GW]── Private subnets (ECS Fargate)
+#                              └── S3/DynamoDB (VPC endpoints)
+#
+# Steps (follow in order):
+#   1. Uncomment the aws_vpc resource
+#   2. Uncomment the private subnet blocks (one per AZ)
+#   3. Uncomment the Internet Gateway
+#   4. Uncomment the NAT Gateway
+#   5. Uncomment route table and route
+#
+# ⚠️ CRITICAL: Without NAT GW, ECS tasks will hang in PROVISIONING state
+#    because they can't pull images from Docker Hub!
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Step 1 — VPC
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc" "vpc2" {
+  # 🚩 ACTION: Uncomment all lines below
+  # cidr_block           = var.vpc2_cidr              # 10.1.0.0/16
+  # enable_dns_support   = true
+  # enable_dns_hostnames = true
+  # tags = {
+  #   Name = "${var.project}-vpc2"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 2 — Private Subnets (only — no public subnets needed)
+# ---------------------------------------------------------------------------
+
+resource "aws_subnet" "vpc2_private" {
+  for_each = local.azs
+
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc2.id
+  # cidr_block = cidrsubnet(var.vpc2_cidr, 8, index(keys(local.azs), each.key) + 1)  # Offset +1 to avoid overlap
+  # availability_zone = each.value
+  # tags = {
+  #   Name = "${var.project}-vpc2-private-${each.key}"
+  #   Tier  = "private"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 3 — Internet Gateway (required by NAT GW)
+# ---------------------------------------------------------------------------
+
+resource "aws_internet_gateway" "vpc2_igw" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc2.id
+  # tags = {
+  #   Name = "${var.project}-vpc2-igw"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 4 — Regional NAT Gateway (CRITICAL for ECS!)
+#
+# 💡 Why needed:
+#    ECS tasks need to pull images from Docker Hub (ealen/echo-server)
+#    and push logs to CloudWatch Logs.
+#    Without NAT GW, tasks hang in PROVISIONING forever.
+# ---------------------------------------------------------------------------
+
+resource "aws_nat_gateway" "vpc2_nat" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc2.id
+  # connectivity_type = "public"
+  # availability_mode = "regional"
+  # depends_on = [aws_internet_gateway.vpc2_igw]
+  # tags = {
+  #   Name = "${var.project}-vpc2-rnat"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Step 5 — Route Table
+# ---------------------------------------------------------------------------
+
+resource "aws_route_table" "vpc2_private" {
+  # 🚩 ACTION: Uncomment all lines below
+  # vpc_id = aws_vpc.vpc2.id
+  # tags = {
+  #   Name = "${var.project}-vpc2-private-rt"
+  # }
+}
+
+resource "aws_route" "vpc2_private_default" {
+  # 🚩 ACTION: Uncomment all lines below
+  # route_table_id = aws_route_table.vpc2_private.id
+  # destination_cidr_block = "0.0.0.0/0"    # Anywhere
+  # nat_gateway_id = aws_nat_gateway.vpc2_nat.id
+}
+
+resource "aws_route_table_association" "vpc2_private" {
+  for_each = aws_subnet.vpc2_private
+
+  # Already complete
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.vpc2_private.id
+}
+
+# ---------------------------------------------------------------------------
+# VPC Endpoints (S3, DynamoDB) — free, avoid NAT GW data charges
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_endpoint" "vpc2_s3" {
+  # Already complete
+  vpc_id            = aws_vpc.vpc2.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.vpc2_private.id,
+  ]
+
+  tags = {
+    Name = "${var.project}-vpc2-endpoint-s3"
+  }
+}
+
+resource "aws_vpc_endpoint" "vpc2_dynamodb" {
+  # Already complete
+  vpc_id            = aws_vpc.vpc2.id
+  service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.vpc2_private.id,
+  ]
+
+  tags = {
+    Name = "${var.project}-vpc2-endpoint-dynamodb"
+  }
+}
+
+# ✅ Verification:
+#    terraform validate   # must pass
+#    terraform plan   # shows: 1 VPC, 2 subnets, 1 IGW, 1 NAT GW, 1 route table, 2 endpoints

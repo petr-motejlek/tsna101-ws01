@@ -1,0 +1,13 @@
+# ---------------------------------------------------------------------------
+# Exercise 2 outputs — uncomment after completing 30-security-ecs.tf and 50-ecs.tf
+# ---------------------------------------------------------------------------
+
+# output "ecs_cluster_name" {
+#   description = "Name of the ECS cluster."
+#   value       = aws_ecs_cluster.main.name
+# }
+
+# output "ecs_task_definition_arn" {
+#   description = "ARN of the ECS task definition (latest revision)."
+#   value       = aws_ecs_task_definition.echo.arn
+# }

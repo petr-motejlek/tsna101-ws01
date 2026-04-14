@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Creates an IAM user with AdministratorAccess for Terraform.
+  Deploy with: aws cloudformation create-stack --stack-name terraform-admin --template-body file://terraform-admin.yaml --capabilities CAPABILITY_NAMED_IAM
+
+Parameters:
+  UserName:
+    Type: String
+    Default: TerraformAdmin
+    Description: Name of the IAM user for Terraform
+    MinLength: 1
+    MaxLength: 64
+
+Resources:
+  TerraformUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref UserName
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Purpose
+          Value: Terraform
+

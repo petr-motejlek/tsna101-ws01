@@ -1,0 +1,59 @@
+# =============================================================================
+# 🚀 EXERCISE 4 — ALB Security Group (VPC 1)
+#
+# In this exercise you will create the security group for the Application Load Balancer.
+#
+# Architecture:
+#    Internet ──[ALB SG:80]── VPC 1 ──[ECS SG:80]── ECS Fargate
+#              └────────── Anywhere (outbound)
+#
+# Steps:
+#   1. Uncomment the aws_security_group resource
+#   2. Uncomment the ingress rule (HTTP from internet)
+#   3. Egress is already configured (allows all outbound)
+#
+# 💡 Key concept:
+#    ALB is publicly reachable (0.0.0.0/0).
+#    It forwards to ECS in VPC 2 via VPC Peering.
+# =============================================================================
+
+resource "aws_security_group" "alb_sg" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-alb-sg"
+  # description = "Security group for the Application Load Balancer in VPC 1."
+  # vpc_id = aws_vpc.vpc1.id
+  # tags = {
+  #   Name = "${var.project}-alb-sg"
+  # }
+}
+
+# ---------------------------------------------------------------------------
+# Ingress: HTTP from the internet (0.0.0.0/0)
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_security_group_ingress_rule" "alb_http_from_internet" {
+  # 🚩 ACTION: Uncomment all lines below
+  # security_group_id = aws_security_group.alb_sg.id
+  # description = "Allow inbound HTTP from the internet."
+  # cidr_ipv4 = "0.0.0.0/0"    # Anywhere — this is a PUBLIC ALB!
+  # from_port = 80
+  # to_port = 80
+  # ip_protocol = "tcp"
+}
+
+# ---------------------------------------------------------------------------
+# Egress: All outbound (to ECS via peering)
+# ---------------------------------------------------------------------------
+
+resource "aws_vpc_security_group_egress_rule" "alb_all_egress" {
+  # Already complete
+  security_group_id = aws_security_group.alb_sg.id
+  description       = "Allow all outbound traffic (ALB to ECS tasks via peering)."
+
+  cidr_ipv4   = "0.0.0.0/0"
+  ip_protocol = "-1"
+}
+
+# ✅ Verification:
+#    terraform validate
+#    terraform plan   # shows: 1 SG, 2 rules

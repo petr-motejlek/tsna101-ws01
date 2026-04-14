@@ -1,0 +1,62 @@
+# =============================================================================
+# 🚀 EXERCISE 4 — ECS Service
+#
+# In this exercise you will wire the ECS task to the ALB.
+#
+# ⚠️ NOTE: This file references the ALB Target Group, which is created in
+#    the same exercise (Exercise 4). That's intentional — you need both to deploy.
+#
+# Architecture:
+#    VPC 2 private subnets
+#       └── ECS Service ── Task Definition (ealen/echo-server)
+#                     └── ALB Target Group ── ALB ── Internet
+#
+# Steps (after creating ALB resources in Exercise 4):
+#   1. Uncomment the aws_ecs_service resource
+#   2. The network_configuration uses VPC 2 private subnets
+#   3. The load_balancer block connects to ALB target group
+#
+# 💡 Key concepts:
+#    • desired_count = 1 (for workshop — minimizes cost)
+#    • launch_type = "FARGATE" = serverless containers
+#    • network_configuration = task ENI placement
+#    • load_balancer = connection to ALB via target group ARN
+# =============================================================================
+
+resource "aws_ecs_service" "echo" {
+  # 🚩 ACTION: Uncomment all lines below
+  # name = "${var.project}-echo-service"
+  # cluster = aws_ecs_cluster.main.id
+  # task_definition = aws_ecs_task_definition.echo.arn
+  # desired_count = var.ecs_desired_count          # Default = 1 (workshop = minimize cost)
+  # launch_type = "FARGATE"
+  # deployment_minimum_healthy_percent = 100    # Prevent downtime during deployments
+  # deployment_maximum_percent = 200         # Allows rolling updates
+  # tags = {
+  #   Name = "${var.project}-echo-service"
+  # }
+
+  # Network configuration: Where does the task ENI live?
+  # network_configuration {
+  #   subnets = [for s in aws_subnet.vpc2_private : s.id]   # VPC 2 private subnets
+  #   security_groups = [aws_security_group.ecs_sg.id]     # ECS Security Group
+  #   assign_public_ip = false                             # Private subnet = no public IP
+  # }
+
+  # Load balancer: Connect to ALB target group
+  # load_balancer {
+  #   target_group_arn = aws_lb_target_group.echo.arn      # Created in this exercise!
+  #   container_name = "echo-server"                        # Must match containerDefinitions name
+  #   container_port = 80
+  # }
+
+  # Dependencies: Wait for ALB listener + IAM role
+  # depends_on = [
+  #   aws_lb_listener.http,
+  #   aws_iam_role_policy_attachment.ecs_task_execution,
+  # ]
+}
+
+# ✅ Verification:
+#    terraform validate
+#    terraform plan   # shows: 1 ECS service

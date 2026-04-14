@@ -1,0 +1,8 @@
+# ---------------------------------------------------------------------------
+# Exercise 3 outputs — uncomment after completing 20-peering.tf
+# ---------------------------------------------------------------------------
+
+# output "vpc_peering_connection_id" {
+#   description = "ID of the VPC Peering connection between VPC 1 and VPC 2."
+#   value       = aws_vpc_peering_connection.vpc1_to_vpc2.id
+# }
